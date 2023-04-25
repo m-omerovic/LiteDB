@@ -64,6 +64,7 @@ namespace LiteDB.Engine
                 {
                     // Schedule a new thread to process the pages in the queue.
                     // https://blog.stephencleary.com/2013/08/startnew-is-dangerous.html
+                    Console.WriteLine("Starting new ExecuteQueue task.");
                     _task = Task.Run(ExecuteQueue);
                 }
             }
@@ -92,7 +93,12 @@ namespace LiteDB.Engine
         /// </summary>
         private void ExecuteQueue()
         {
-            if (_queue.Count == 0) return;
+            Console.WriteLine("ExecuteQueue started.");
+            if (_queue.Count == 0)
+            {
+                Console.WriteLine("ExecuteQueue stopped, empty queue before processing.");
+                return;
+            }
 
             do
             {
@@ -106,13 +112,18 @@ namespace LiteDB.Engine
                     _stream.FlushToDisk();
                     Volatile.Write(ref _running, 0);
 
-                    if (!_queue.Any()) return;
+                    if (!_queue.Any())
+                    {
+                        Console.WriteLine("ExecuteQueue stopped, empty queue after processing.");
+                        return;
+                    }
 
                     // Another item was added to the queue after we detected it was empty.
                     var oldValue = Interlocked.CompareExchange(ref _running, 1, 0);
 
                     if (oldValue == 1)
                     {
+                        Console.WriteLine("ExecuteQueue stopped.");
                         // A new thread was already scheduled for execution, this thread can return.
                         return;
                     }
